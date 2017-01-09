@@ -1,0 +1,95 @@
+/*
+ * UVoronoi.osl by Joakim Poromaa Helger 2017
+ * from https://github.com/poromaa/UVoronoi
+ *
+ * Version: 0.1
+ */
+ 
+
+color voronoi_center(point p)
+{
+	float r = cellnoise(p);
+	float g = cellnoise(point(p[1], p[0], p[2]));
+	float b = cellnoise(point(p[1], p[2], p[0]));
+
+	return color(r, g, b);
+}
+
+void voronoi(point p, float fac)
+{
+	/* returns distances in da and point coords in pa */
+	int xx, yy, zz, xi, yi, zi;
+
+	xi = (int)floor(p[0]);
+	yi = (int)floor(p[1]);
+	zi = (int)floor(p[2]);
+
+	fac = 1e10;
+
+
+	for (xx = xi -1; xx <= xi + 1; xx++) {
+		for (yy = yi-1 ; yy <= yi + 1; yy++) {
+			for (zz = zi -1; zz <= zi + 1; zz++) {
+                //p  - current sample point
+                //ip - current point xx yy zz in loop
+                //vp - voroni point (middle of lines)
+
+				point ip = point(xx, yy, zz);
+				point vp = (point)voronoi_center(ip);
+				point pd = p - (vp + ip);
+				float d =  dot(pd, pd); //make distance from sample point to voronipoint a scalar (large == far) 
+				if (d < fac) { // only take shortest distance
+					fac = d;
+			    }
+		
+			}
+		}
+	}
+}
+
+shader VoronoiAll(
+  point UV = P,
+  float Hardness = 10,
+  float Strength = 50,
+  float Distance = 1,
+  float scale = 5,
+  output float Fac = 0,
+  output  vector Vector = vector(0),
+){
+    float da;
+    float stp, stpLeft, stpRight, stpUp, stpDown, xDelta, yDelta,center;
+    //float Hardness = 10.0;
+    point UVs = UV;
+    
+    UVs[0] = (UVs[0])*scale;
+    UVs[1] = (UVs[1])*scale;
+
+    
+    stp = (Distance/Hardness)/100.0;
+    float str = (Distance)*(Hardness);
+    //Hardness = Distance/Strength;
+    
+    // gradient lookup
+    voronoi(UVs,center);
+    voronoi(vector(UVs[0]+stp,UVs[1],UVs[2]),stpRight);
+    voronoi(vector(UVs[0],UVs[1]+stp,UVs[2]),stpDown);
+      
+    center = center;
+    stpRight =stpRight;
+    stpDown = stpDown;
+      
+      
+    xDelta = (center-stpRight)*str;
+    yDelta = (center-stpDown)*str;
+                
+
+    Fac = center;  
+    
+  
+    float ss = max(min(1,Strength/100.0),0);
+    Vector = vector(xDelta*ss,yDelta*ss,1.0);
+     
+    Vector=normalize(Vector);
+
+}
+
