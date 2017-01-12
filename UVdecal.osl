@@ -1,0 +1,101 @@
+color voronoi_center(point p)
+{
+	float r = noise("cell",p);
+	float g = noise("cell",point(p[1]*1212, p[0]*1122, p[0])); // tried to not make them overlap
+	//float b = noise("perlin", point(p[0],p[1],p[0]));
+
+	return color(r, g, 0);
+}
+ 
+ void rotate2D (output point Q, float angle)
+{
+    Q=rotate(Q, angle, point(0.5,0.5,0.0),point(0.5,0.5,1.0));
+}
+ 
+color decal(point p, point center, float size, float angle){
+
+    if(distance(p,center) < .8) {
+        vector uv = (p-center)/size+vector(.5);
+        rotate2D(uv,angle);
+        
+        if(uv[0]>0 && uv[0] < 1
+            && uv[1]>0 && uv[1] <1) {
+            return (uv);
+        }
+    }   
+    
+}
+
+void voronoi(point p,point uv, 
+float Size, float fac, color Color,int dither,float 
+angle, float variation,
+float corner,
+float softness)
+{
+	/* returns distances in da and point coords in pa */
+	int xx, yy, zz, xi, yi, zi;
+
+	xi = (int)floor(p[0]);
+	yi = (int)floor(p[1]);
+
+	fac = 1e10;
+    vector Cell, dp, center, random;
+    float d, size,hg,alpha, rvar,dis;
+    int check =0;
+    point ip = point(0);
+    point vp, pd ;
+	for (xx = xi -1; xx <= xi + 1; xx++) {
+		for (yy = yi-1 ; yy <= yi + 1; yy++) {
+	           
+
+			    ip = point(xx, yy, zz);
+                random = cellnoise(ip);
+                rvar = random[0]*random[1]*(variation);
+                
+				vp = (point)voronoi_center(ip);
+				pd = p - (vp + ip);
+
+				d = dot(pd, pd); //make distance from sample point to voronipoint a scalar (large == far) 
+
+                dis = distance(ip,vp);
+                
+
+                if(sqrt(d) <(cos(pd[0]*dither)*sin(pd[1]*dither)/softness+1)*Size*(1+rvar)*corner ) { 
+                    Color = decal(p, (vp + ip), Size*(1+rvar), (1+rvar)*angle);
+                }
+                
+               
+                
+                
+				if (d < fac){// && sbest-best > .5) { // only take shortest distance       
+					fac = d;
+			    }
+            
+                
+              
+		}
+	}
+}
+
+
+shader VoronoiAll(
+  point UV = P,
+  float Scale = 5,
+  float Size = .1,
+  float Angle = 0.0,
+  float Variation = 0.0,
+  float Corner = 0.0,
+  int Dither = 0,
+  float SoftEdges = 0.0,
+  output float Fac = 0,
+  output vector UVout = vector(0)
+){
+
+    vector UVs = UV*Scale;
+    float fac;
+    vector col = vector(-1.0); //outside image
+    UVout = col;
+    voronoi(UVs,UV, Size, fac, col, Dither, Angle, Variation, -Corner+1, SoftEdges); //1299827  //12421422
+    Fac = fac;
+    UVout = max(UVout,col);
+}
